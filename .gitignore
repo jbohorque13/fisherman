@@ -1,0 +1,14 @@
+node_modules
+.env
+.expo
+.claude
+.cursor
+.env.example
+package-lock.json
+
+ios/
+android/
+.DS_Store
+babel.config.js
+tsconfig.json
+dist/

@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Fisherman",
+    "slug": "fisherman",
+    "version": "1.0.0",
+    "scheme": "fisherman",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.josue.fisherman.app",
+      "runtimeVersion": "1.0.0"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2563EB"
+      },
+      "package": "com.yourorg.fisherman",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "fisherman"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "runtimeVersion": "1.0.0"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "46906f44-092f-4ffb-bc20-1bcf92ea91ae"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/46906f44-092f-4ffb-bc20-1bcf92ea91ae"
+    }
+  }
+}
