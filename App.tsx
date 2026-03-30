@@ -25,35 +25,28 @@ export default function App() {
       setSession(session);
     });
 
-    const handleDeepLink = async (url: string) => {
-      const code = extractCode(url);
-      if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
-      }
-    };
-
-    const linkingSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-
-    // Esperar a que getSession() cargue el PKCE verifier de SecureStore
-    // antes de intentar exchangeCodeForSession con el initialURL
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
 
-      // Solo procesar initialURL si no hay sesión activa (relaunch por deep link)
+      // Solo para cuando iOS/Android relanza la app desde un deep link (ej. TestFlight)
+      // En foreground, openAuthSessionAsync en LoginScreen maneja el exchange
       if (!session) {
         const url = await Linking.getInitialURL();
-        if (url) handleDeepLink(url);
+        if (url) {
+          const code = extractCode(url);
+          if (code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) console.warn('exchangeCodeForSession error:', error.message);
+          }
+        }
       }
     };
 
     init();
 
-    return () => {
-      subscription.unsubscribe();
-      linkingSub.remove();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   if (loading) {

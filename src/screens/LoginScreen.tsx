@@ -19,7 +19,7 @@ export default function LoginScreen() {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
-      const redirectTo = makeRedirectUri({ scheme: 'fisherman' });
+      const redirectTo = makeRedirectUri({ scheme: 'fisherman://redirect' });
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -28,14 +28,12 @@ export default function LoginScreen() {
           skipBrowserRedirect: true,
         },
       });
-
       if (error) throw error;
       if (!data.url) throw new Error('No se obtuvo URL de autenticación');
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-
       if (result.type === 'success' && result.url) {
-        const code = result.url.match(/[?&]code=([^&\s]+)/)?.[1];
+        const code = result.url.match(/[?&]code=([^&\s]+)/)?.[1].replace('#', '');
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
