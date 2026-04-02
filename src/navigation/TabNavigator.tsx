@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, TabParamList } from '../types';
-import IntegrarScreen from '../screens/IntegrarScreen';
+import IntegrationListScreen from '../screens/IntegrationListScreen';
 import GruposScreen from '../screens/GruposScreen';
 import NotificacionesScreen from '../screens/NotificacionesScreen';
 import PerfilScreen from '../screens/PerfilScreen';
@@ -42,7 +42,7 @@ export default function TabNavigator() {
           ),
         })}
       >
-        <Tab.Screen name="Integrar" component={IntegrarScreen} />
+        <Tab.Screen name="Integrar" component={IntegrationListScreen} />
         <Tab.Screen name="Grupos" component={GruposScreen} />
         <Tab.Screen name="Notificaciones" component={NotificacionesScreen} />
         <Tab.Screen name="Perfil" component={PerfilScreen} />

@@ -48,8 +48,11 @@ export interface Notificacion {
 
 export type RootStackParamList = {
   Login: undefined;
+  EmailLogin: undefined;
   Main: undefined;
   Form: undefined;
+  IntegrationList: undefined;
+  ContactDetail: { contact: any; onDone?: () => void };
 };
 
 export type TabParamList = {

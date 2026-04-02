@@ -9,11 +9,17 @@ import {
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { RootStackParamList } from '../types';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export default function LoginScreen() {
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
+};
+
+export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   const signInWithGoogle = async () => {
@@ -62,6 +68,14 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>Continuar con Google</Text>
         )}
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.buttonOutline}
+        onPress={() => navigation.navigate('EmailLogin')}
+        disabled={loading}
+      >
+        <Text style={styles.buttonOutlineText}>Continuar con Email</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -95,6 +109,21 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonOutline: {
+    borderWidth: 1.5,
+    borderColor: '#2563EB',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  buttonOutlineText: {
+    color: '#2563EB',
     fontSize: 16,
     fontWeight: '600',
   },
