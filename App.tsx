@@ -1,45 +1,50 @@
 import 'react-native-url-polyfill/auto';
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
+import { Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
+import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import { supabase } from './src/lib/supabase';
+import { useTheme } from './src/lib/theme';
+import { AnimatedSplash } from './src/components/AnimatedSplash';
 import { useProfile } from './src/hooks/useProfile';
+import { useAppNotifications } from './src/hooks/useAppNotifications';
+import { registerPushToken } from './src/lib/notifications';
 
 import LoginScreen from './src/screens/LoginScreen';
 import EmailLoginScreen from './src/screens/EmailLoginScreen';
 import PendingScreen from './src/screens/PendingScreen';
 import AdminScreen from './src/screens/AdminScreen';
-import GuiaScreen from './src/screens/GuiaScreen';
+import GuiaTabNavigator from './src/navigation/GuiaTabNavigator';
+import PersonDetailScreen from './src/screens/PersonDetailScreen';
 import FormScreen from './src/screens/FormScreen';
 import IntegrationListScreen from './src/screens/IntegrationListScreen';
 import ContactDetailScreen from './src/screens/ContactDetailScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import { RootStackParamList } from './src/types';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+// Mantener el splash nativo visible hasta que estemos listos
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const extractCode = (url: string) => url.match(/[?&]code=([^&\s]+)/)?.[1] ?? null;
+
 
 function AppScreens() {
   const { profile, loading: profileLoading, fetchProfile } = useProfile();
+  useAppNotifications();
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { fetchProfile(); }, []);
 
-  if (profileLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
-  }
+  // Mientras carga el perfil no mostramos nada: AnimatedSplash cubre la pantalla
+  if (profileLoading) return null;
 
-  // Pending: ve pantalla de revisión con formulario de perfil
   if (!profile || profile.role === 'pending') {
     return (
       <PendingScreen
@@ -47,23 +52,26 @@ function AppScreens() {
           id: '', email: '', role: 'pending',
           full_name: null, age: null, address: null,
           phone: null, push_token: null,
+          nombre: '', apellido: '', edad: 0,
+          celular: '', dias_disponibles: [],
+          tipo_grupo: 'chicas', modalidad: 'online',
         }}
         onRefresh={fetchProfile}
       />
     );
   }
 
-  // Admin: panel de gestión de usuarios
-  if (profile.role === 'admin') {
-    return <AdminScreen />;
-  }
+  if (profile.role === 'admin') return <AdminScreen />;
 
-  // Guía: su stack propio
   if (profile.role === 'guia') {
-    return <GuiaScreen />;
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="GuiaHome" component={GuiaTabNavigator} />
+        <Stack.Screen name="PersonDetail" component={PersonDetailScreen} />
+      </Stack.Navigator>
+    );
   }
 
-  // Integrador: app completa con tabs + modales
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={TabNavigator} />
@@ -79,12 +87,17 @@ function AppScreens() {
 }
 
 export default function App() {
+  const theme = useTheme();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [animDone, setAnimDone] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === 'SIGNED_IN') {
+        registerPushToken().catch(console.warn);
+      }
     });
 
     const init = async () => {
@@ -92,8 +105,7 @@ export default function App() {
       setSession(session);
       setLoading(false);
 
-      // Manejo de deep link para TestFlight / app relanzada desde OAuth
-      if (!session) {
+      if (!session && Platform.OS === 'android') {
         const url = await Linking.getInitialURL();
         if (url) {
           const code = extractCode(url);
@@ -103,33 +115,39 @@ export default function App() {
           }
         }
       }
+
+      // Ocultar splash nativo una vez que JS está listo
+      await SplashScreen.hideAsync();
     };
 
     init();
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
-  }
+  if (loading) return null;
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!session ? (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="EmailLogin" component={EmailLoginScreen} />
-          </>
-        ) : (
-          // Pantalla contenedora que resuelve el rol
-          <Stack.Screen name="Main" component={AppScreens} />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaProvider>
+        <StatusBar style={theme.statusBar} translucent backgroundColor="transparent" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={['top']}>
+          <NavigationContainer theme={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: theme.background, card: theme.surface, text: theme.text, border: theme.border, primary: theme.primary } }}>
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              {!session ? (
+                <>
+                  <Stack.Screen name="Login" component={LoginScreen} />
+                  <Stack.Screen name="EmailLogin" component={EmailLoginScreen} />
+                </>
+              ) : (
+                <Stack.Screen name="Main" component={AppScreens} />
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaView>
+      </SafeAreaProvider>
+      {/* AnimatedSplash como overlay: el app carga por debajo mientras la animación corre */}
+      {!animDone && <AnimatedSplash onFinish={() => setAnimDone(true)} />}
+    </GestureHandlerRootView>
   );
 }
+

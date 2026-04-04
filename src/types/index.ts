@@ -53,6 +53,8 @@ export type RootStackParamList = {
   Form: undefined;
   IntegrationList: undefined;
   ContactDetail: { contact: any; onDone?: () => void };
+  GuiaHome: undefined;
+  PersonDetail: { person: any; onDone?: () => void };
 };
 
 export type TabParamList = {

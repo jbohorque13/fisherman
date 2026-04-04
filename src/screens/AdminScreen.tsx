@@ -1,173 +1,306 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert,
+  StyleSheet, ActivityIndicator, Alert, ActionSheetIOS, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
+import { supabase, signOut } from '../lib/supabase';
+import { notifyUserRoleAssigned } from '../lib/notifications';
+import { useTheme } from '../lib/theme';
 
-type PendingUser = {
+type UserRole = 'pending' | 'integrador' | 'guia' | 'admin';
+
+type User = {
   id: string;
   email: string;
   full_name: string | null;
   age: number | null;
+  role: UserRole;
 };
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  pending: 'Pendiente',
+  integrador: 'Integrador',
+  guia: 'Guía',
+  admin: 'Admin',
+};
+
+const ROLE_COLORS: Record<UserRole, string> = {
+  pending: '#F59E0B',
+  integrador: '#2563EB',
+  guia: '#7C3AED',
+  admin: '#DC2626',
+};
+
+type Tab = 'pending' | 'all';
+
 export default function AdminScreen() {
-  const [users, setUsers] = useState<PendingUser[]>([]);
+  const theme = useTheme();
+  const styles = makeStyles(theme);
+  const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<Tab>('pending');
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [assigning, setAssigning] = useState<string | null>(null); // id del user en proceso
+  const [assigning, setAssigning] = useState<string | null>(null);
 
   useEffect(() => {
-    loadPendingUsers();
+    loadAll();
   }, []);
 
-  const loadPendingUsers = async () => {
+  const loadAll = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, age')
-      .eq('role', 'pending')
+      .select('id, email, full_name, age, role')
       .order('created_at');
 
     if (error) Alert.alert('Error', error.message);
-    else setUsers(data ?? []);
+    else {
+      const users = (data ?? []) as User[];
+      setPendingUsers(users.filter((u) => u.role === 'pending'));
+      setAllUsers(users);
+    }
     setLoading(false);
   };
 
+  // Asignar rol desde la pestaña Pendientes (solo integrador / guia)
   const assignRole = async (userId: string, role: 'integrador' | 'guia') => {
-    const roleLabel = role === 'integrador' ? 'Integrador' : 'Guía';
-    Alert.alert(
-      'Confirmar',
-      `¿Asignar como ${roleLabel}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            setAssigning(userId);
-            const { error } = await supabase
-              .from('profiles')
-              .update({ role })
-              .eq('id', userId);
-
-            setAssigning(null);
-
-            if (error) return Alert.alert('Error', error.message);
-
-            // Quitar de la lista local inmediatamente
-            setUsers((prev) => prev.filter((u) => u.id !== userId));
-          },
+    const roleLabel = ROLE_LABELS[role];
+    Alert.alert('Confirmar', `¿Asignar como ${roleLabel}?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Confirmar',
+        onPress: async () => {
+          setAssigning(userId);
+          const { error } = await supabase
+            .from('profiles').update({ role }).eq('id', userId);
+          setAssigning(null);
+          if (error) return Alert.alert('Error', error.message);
+          notifyUserRoleAssigned(userId, role);
+          await loadAll();
         },
-      ]
-    );
+      },
+    ]);
+  };
+
+  // Cambiar cualquier rol desde la pestaña Todos
+  const changeRole = (user: User) => {
+    const roles: UserRole[] = ['admin', 'integrador', 'guia', 'pending'];
+    const options = roles.map((r) => ROLE_LABELS[r]);
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: user.full_name ?? user.email,
+          message: `Rol actual: ${ROLE_LABELS[user.role]}`,
+          options: [...options, 'Cancelar'],
+          cancelButtonIndex: options.length,
+          destructiveButtonIndex: roles.indexOf('pending'),
+        },
+        (index) => {
+          if (index < roles.length) applyRole(user, roles[index]);
+        },
+      );
+    } else {
+      // Android: usar Alert con botones
+      Alert.alert(
+        user.full_name ?? user.email,
+        `Rol actual: ${ROLE_LABELS[user.role]}\n\nSeleccionar nuevo rol:`,
+        [
+          ...roles.map((r) => ({
+            text: ROLE_LABELS[r],
+            onPress: () => applyRole(user, r),
+          })),
+          { text: 'Cancelar', style: 'cancel' as const },
+        ],
+      );
+    }
+  };
+
+  const applyRole = async (user: User, newRole: UserRole) => {
+    if (newRole === user.role) return;
+    setAssigning(user.id);
+    const { error } = await supabase
+      .from('profiles').update({ role: newRole }).eq('id', user.id);
+    setAssigning(null);
+    if (error) return Alert.alert('Error', error.message);
+    if (newRole === 'integrador' || newRole === 'guia') {
+      notifyUserRoleAssigned(user.id, newRole);
+    }
+    await loadAll();
   };
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Panel Admin</Text>
-        <TouchableOpacity onPress={loadPendingUsers}>
-          <Ionicons name="refresh" size={22} color="#2563EB" />
+        <TouchableOpacity onPress={loadAll}>
+          <Ionicons name="refresh" size={22} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.subtitle}>
-        {users.length === 0
-          ? 'No hay usuarios pendientes'
-          : `${users.length} usuario${users.length > 1 ? 's' : ''} pendiente${users.length > 1 ? 's' : ''}`
-        }
-      </Text>
-
-      <FlatList
-        data={users}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="checkmark-circle-outline" size={48} color="#10B981" />
-            <Text style={styles.emptyText}>Todo al día</Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardName}>{item.full_name ?? '(sin nombre)'}</Text>
-              <Text style={styles.cardEmail}>{item.email}</Text>
-              {item.age ? <Text style={styles.cardMeta}>{item.age} años</Text> : null}
-            </View>
-
-            {assigning === item.id ? (
-              <ActivityIndicator color="#2563EB" />
-            ) : (
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={[styles.roleBtn, styles.roleBtnIntegrador]}
-                  onPress={() => assignRole(item.id, 'integrador')}
-                >
-                  <Text style={styles.roleBtnText}>Integrador</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.roleBtn, styles.roleBtnGuia]}
-                  onPress={() => assignRole(item.id, 'guia')}
-                >
-                  <Text style={styles.roleBtnText}>Guía</Text>
-                </TouchableOpacity>
-              </View>
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'pending' && styles.tabActive]}
+          onPress={() => setTab('pending')}
+        >
+          <Text style={[styles.tabText, tab === 'pending' && styles.tabTextActive]}>
+            Pendientes
+            {pendingUsers.length > 0 && (
+              <Text style={styles.tabBadge}> {pendingUsers.length}</Text>
             )}
-          </View>
-        )}
-      />
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'all' && styles.tabActive]}
+          onPress={() => setTab('all')}
+        >
+          <Text style={[styles.tabText, tab === 'all' && styles.tabTextActive]}>
+            Todos los usuarios
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Pestaña Pendientes */}
+      {tab === 'pending' && (
+        <FlatList
+          data={pendingUsers}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="checkmark-circle-outline" size={48} color={theme.success} />
+              <Text style={styles.emptyText}>No hay usuarios pendientes</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName}>{item.full_name ?? '(sin nombre)'}</Text>
+                <Text style={styles.cardEmail}>{item.email}</Text>
+                {item.age ? <Text style={styles.cardMeta}>{item.age} años</Text> : null}
+              </View>
+              {assigning === item.id ? (
+                <ActivityIndicator color={theme.primary} />
+              ) : (
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={[styles.roleBtn, { backgroundColor: ROLE_COLORS.integrador }]}
+                    onPress={() => assignRole(item.id, 'integrador')}
+                  >
+                    <Text style={styles.roleBtnText}>Integrador</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.roleBtn, { backgroundColor: ROLE_COLORS.guia }]}
+                    onPress={() => assignRole(item.id, 'guia')}
+                  >
+                    <Text style={styles.roleBtnText}>Guía</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        />
+      )}
+
+      {/* Pestaña Todos */}
+      {tab === 'all' && (
+        <FlatList
+          data={allUsers}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => changeRole(item)}
+              disabled={assigning === item.id}
+            >
+              <View style={styles.userRow}>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName}>{item.full_name ?? '(sin nombre)'}</Text>
+                  <Text style={styles.cardEmail}>{item.email}</Text>
+                </View>
+                {assigning === item.id ? (
+                  <ActivityIndicator color={theme.primary} size="small" />
+                ) : (
+                  <View style={[styles.rolePill, { backgroundColor: ROLE_COLORS[item.role] + '20' }]}>
+                    <Text style={[styles.rolePillText, { color: ROLE_COLORS[item.role] }]}>
+                      {ROLE_LABELS[item.role]}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
 
       <TouchableOpacity
-        style={styles.logoutBtn}
-        onPress={() => supabase.auth.signOut()}
+        style={[styles.logoutBtn, { paddingBottom: 16 + insets.bottom }]}
+        onPress={() => signOut()}
       >
-        <Ionicons name="log-out-outline" size={16} color="#94A3B8" />
+        <Ionicons name="log-out-outline" size={16} color={theme.textMuted} />
         <Text style={styles.logoutBtnText}>Cerrar sesión</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 4,
-  },
-  title: { fontSize: 22, fontWeight: '700', color: '#1E293B' },
-  subtitle: { fontSize: 13, color: '#64748B', paddingHorizontal: 20, marginBottom: 12 },
-  list: { padding: 16, gap: 10 },
-  emptyContainer: { alignItems: 'center', marginTop: 60, gap: 10 },
-  emptyText: { fontSize: 15, color: '#94A3B8' },
-  card: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#E2E8F0',
-  },
-  cardInfo: { marginBottom: 12 },
-  cardName: { fontSize: 16, fontWeight: '600', color: '#1E293B' },
-  cardEmail: { fontSize: 13, color: '#64748B', marginTop: 2 },
-  cardMeta: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  cardActions: { flexDirection: 'row', gap: 8 },
-  roleBtn: {
-    flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center',
-  },
-  roleBtnIntegrador: { backgroundColor: '#2563EB' },
-  roleBtnGuia: { backgroundColor: '#7C3AED' },
-  roleBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, padding: 16,
-  },
-  logoutBtnText: { color: '#94A3B8', fontSize: 14 },
-});
+function makeStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20, paddingTop: 60, paddingBottom: 12,
+    },
+    title: { fontSize: 22, fontWeight: '700', color: theme.text },
+    tabs: {
+      flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: theme.border,
+      marginHorizontal: 16,
+    },
+    tab: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: -1 },
+    tabActive: { borderBottomWidth: 2, borderBottomColor: theme.primary },
+    tabText: { fontSize: 14, fontWeight: '500', color: theme.textMuted },
+    tabTextActive: { color: theme.primary, fontWeight: '600' },
+    tabBadge: { color: theme.warning, fontWeight: '700' },
+    list: { padding: 16, gap: 10 },
+    emptyContainer: { alignItems: 'center', marginTop: 60, gap: 10 },
+    emptyText: { fontSize: 15, color: theme.textMuted },
+    card: {
+      backgroundColor: theme.surface, borderRadius: 12, padding: 14,
+      borderWidth: 1, borderColor: theme.border,
+    },
+    cardInfo: { flex: 1 },
+    cardName: { fontSize: 15, fontWeight: '600', color: theme.text },
+    cardEmail: { fontSize: 13, color: theme.textSecondary, marginTop: 2 },
+    cardMeta: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+    cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+    roleBtn: {
+      flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center',
+    },
+    roleBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+    userRow: { flexDirection: 'row', alignItems: 'center' },
+    rolePill: {
+      borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 8,
+    },
+    rolePillText: { fontSize: 12, fontWeight: '600' },
+    logoutBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: 6, padding: 16,
+    },
+    logoutBtnText: { color: theme.textMuted, fontSize: 14 },
+  });
+}

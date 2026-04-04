@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifyAdminsNewUser, notifyUserPendingRole } from '../lib/notifications';
 
 export type UserRole = 'pending' | 'integrador' | 'guia' | 'admin';
 
@@ -21,8 +22,6 @@ export type UserProfile = {
   push_token: string | null;
 };
 
-const ADMIN_EMAIL = 'jdbcarrascal@gmail.com';
-
 export function useProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,7 +30,6 @@ export function useProfile() {
   const fetchProfile = useCallback(async () => {
     setLoading(true);
     setError(null);
-    console.log('fetchProfile ');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -42,22 +40,17 @@ export function useProfile() {
         .eq('id', user.id)
         .maybeSingle();
 
-      console.log('dbError', dbError);
       if (dbError) throw dbError;
-      console.log('data', data);
+
       if (data) {
-        // Override de rol por email del admin
-        const role: UserRole = user.email === ADMIN_EMAIL ? 'admin' : data.role;
-        setProfile({ ...data, role });
+        setProfile(data);
       } else {
         // Primera vez: crear perfil con role pending
-        console.log('user.email', user.email);
-        console.log('ADMIN_EMAIL', ADMIN_EMAIL);
         const newProfile: UserProfile = {
           id: user.id,
           email: user.email!,
           full_name: null,
-          role: user.email === ADMIN_EMAIL ? 'admin' : 'pending',
+          role: 'pending',
           nombre: '',
           apellido: '',
           edad: 0,
@@ -70,11 +63,15 @@ export function useProfile() {
           phone: null,
           push_token: null,
         };
-        console.log('n SewProfile', newProfile);
         const { error: insertError } = await supabase.from('profiles').insert(newProfile).select();
-        console.log('insertError', insertError);
         if (insertError) throw insertError;
         setProfile(newProfile);
+
+        // Notificar admins y al propio usuario si su rol es pending
+        if (newProfile.role === 'pending') {
+          notifyAdminsNewUser(user.email!).catch(() => {});
+          notifyUserPendingRole(user.id).catch(() => {});
+        }
       }
     } catch (err: any) {
       setError(err.message);

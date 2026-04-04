@@ -6,12 +6,15 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
+import { useTheme } from '../lib/theme';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'EmailLogin'>;
 };
 
 export default function EmailLoginScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -65,7 +68,7 @@ export default function EmailLoginScreen({ navigation }: Props) {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor={theme.textMuted}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -76,7 +79,7 @@ export default function EmailLoginScreen({ navigation }: Props) {
       <TextInput
         style={styles.input}
         placeholder="Contraseña"
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor={theme.textMuted}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -105,27 +108,29 @@ export default function EmailLoginScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1, justifyContent: 'center',
-    padding: 24, backgroundColor: '#fff',
-  },
-  backBtn: { position: 'absolute', top: 60, left: 24 },
-  backText: { color: '#2563EB', fontSize: 15 },
-  title: {
-    fontSize: 28, fontWeight: '700', color: '#1E293B',
-    marginBottom: 32,
-  },
-  input: {
-    borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8,
-    padding: 13, fontSize: 15, color: '#1E293B',
-    marginBottom: 14, backgroundColor: '#F8FAFC',
-  },
-  button: {
-    backgroundColor: '#2563EB', borderRadius: 8,
-    padding: 15, alignItems: 'center', marginTop: 4,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  switchBtn: { marginTop: 20, alignItems: 'center' },
-  switchText: { color: '#2563EB', fontSize: 14 },
-});
+function makeStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    container: {
+      flex: 1, justifyContent: 'center',
+      padding: 24, backgroundColor: theme.surface,
+    },
+    backBtn: { position: 'absolute', top: 60, left: 24 },
+    backText: { color: theme.primary, fontSize: 15 },
+    title: {
+      fontSize: 28, fontWeight: '700', color: theme.text,
+      marginBottom: 32,
+    },
+    input: {
+      borderWidth: 1, borderColor: theme.borderInput, borderRadius: 8,
+      padding: 13, fontSize: 15, color: theme.text,
+      marginBottom: 14, backgroundColor: theme.background,
+    },
+    button: {
+      backgroundColor: theme.primary, borderRadius: 8,
+      padding: 15, alignItems: 'center', marginTop: 4,
+    },
+    buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    switchBtn: { marginTop: 20, alignItems: 'center' },
+    switchText: { color: theme.primary, fontSize: 14 },
+  });
+}

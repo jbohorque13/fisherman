@@ -10,12 +10,18 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
+import { supabase, signOut } from '../lib/supabase';
+import AvatarPicker from '../components/AvatarPicker';
+import { useTheme } from '../lib/theme';
 
 export default function PerfilScreen() {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
+  const [userId, setUserId] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -27,17 +33,19 @@ export default function PerfilScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    setUserId(user.id);
     setEmail(user.email ?? '');
 
     const { data } = await supabase
       .from('profiles')
-      .select('nombre, apellido')
+      .select('nombre, apellido, avatar_url')
       .eq('id', user.id)
       .maybeSingle();
 
     if (data) {
       setNombre(data.nombre ?? '');
       setApellido(data.apellido ?? '');
+      setAvatarUrl(data.avatar_url ?? null);
     } else {
       const meta = user.user_metadata;
       setNombre(meta?.full_name?.split(' ')[0] ?? '');
@@ -78,7 +86,7 @@ export default function PerfilScreen() {
       {
         text: 'Salir',
         style: 'destructive',
-        onPress: () => supabase.auth.signOut(),
+        onPress: () => signOut(),
       },
     ]);
   };
@@ -86,7 +94,7 @@ export default function PerfilScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -95,8 +103,14 @@ export default function PerfilScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Mi Perfil</Text>
 
-      <View style={styles.avatar}>
-        <Ionicons name="person-circle" size={80} color="#CBD5E1" />
+      <View style={styles.avatarContainer}>
+        <AvatarPicker
+          userId={userId}
+          avatarUrl={avatarUrl}
+          size={90}
+          accentColor={theme.primary}
+          onUploaded={(url) => setAvatarUrl(url)}
+        />
       </View>
 
       <Text style={styles.label}>Nombre</Text>
@@ -131,47 +145,49 @@ export default function PerfilScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={cerrarSesion}>
-        <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+        <Ionicons name="log-out-outline" size={18} color={theme.danger} />
         <Text style={styles.logoutText}>Cerrar sesión</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 24, paddingBottom: 48 },
-  title: { fontSize: 22, fontWeight: '700', color: '#1E293B', marginBottom: 24 },
-  avatar: { alignItems: 'center', marginBottom: 24 },
-  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6, marginTop: 14 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#1E293B',
-  },
-  inputDisabled: { backgroundColor: '#F1F5F9', color: '#94A3B8' },
-  saveBtn: {
-    backgroundColor: '#2563EB',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-  },
-  logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '600' },
-});
+function makeStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.surface },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    content: { padding: 24, paddingBottom: 48 },
+    title: { fontSize: 22, fontWeight: '700', color: theme.text, marginBottom: 24 },
+    avatarContainer: { alignItems: 'center', marginBottom: 24 },
+    label: { fontSize: 13, fontWeight: '600', color: theme.textSecondary, marginBottom: 6, marginTop: 14 },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.borderInput,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 15,
+      color: theme.text,
+    },
+    inputDisabled: { backgroundColor: theme.surfaceAlt, color: theme.textMuted },
+    saveBtn: {
+      backgroundColor: theme.primary,
+      padding: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 28,
+    },
+    saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    logoutBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 20,
+      padding: 14,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.dangerSurface,
+    },
+    logoutText: { color: theme.danger, fontSize: 15, fontWeight: '600' },
+  });
+}

@@ -12,13 +12,16 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.josue.fisherman.app",
-      "runtimeVersion": "1.0.0"
+      "runtimeVersion": "1.0.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#2563EB"
       },
-      "package": "com.yourorg.fisherman",
+      "package": "com.josue.fisherman.app",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -36,10 +39,36 @@
       ],
       "runtimeVersion": "1.0.0"
     },
+    "splash": {
+      "backgroundColor": "#2563EB",
+      "resizeMode": "contain"
+    },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#2563EB",
+          "resizeMode": "contain"
+        }
+      ],
       "expo-secure-store",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#2563EB",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Fisherman necesita acceso a tus fotos para actualizar tu foto de perfil.",
+          "cameraPermission": "Fisherman necesita acceso a tu cámara para tomar una foto de perfil.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -1,42 +1,35 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../lib/theme';
 import { RootStackParamList, TipoGrupo, Modalidad, Genero } from '../types';
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Form'>;
-};
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Form'> };
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
 const TIPOS_GRUPO: { value: TipoGrupo; label: string }[] = [
   { value: 'chicas', label: 'Chicas' },
   { value: 'chicos', label: 'Chicos' },
   { value: 'mixto_solteros', label: 'Mixto Solteros' },
   { value: 'casados', label: 'Casados' },
 ];
-
 const MODALIDADES: { value: Modalidad; label: string }[] = [
   { value: 'online', label: 'Online' },
   { value: 'presencial', label: 'Presencial' },
 ];
-
 const GENEROS: { value: Genero; label: string }[] = [
   { value: 'masculino', label: 'Masculino' },
   { value: 'femenino', label: 'Femenino' },
 ];
 
 export default function FormScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = makeStyles(theme);
+
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [edad, setEdad] = useState('');
@@ -63,24 +56,25 @@ export default function FormScreen({ navigation }: Props) {
       Alert.alert('Días requeridos', 'Selecciona al menos un día disponible');
       return;
     }
-
     try {
       setLoading(true);
-
-      const { error } = await supabase.from('personas').insert({
-        nombre,
-        apellido,
-        edad: parseInt(edad, 10),
-        celular: celular || null,
-        email: email || null,
-        genero,
-        dias_disponibles: diasSeleccionados,
-        tipo_grupo: tipoGrupo,
-        modalidad,
-        status: 'en_proceso',
-      });
-
+      const { data: personaData, error } = await supabase
+        .from('personas')
+        .insert({
+          nombre, apellido, edad: parseInt(edad, 10),
+          celular: celular || null, email: email || null,
+          genero, dias_disponibles: diasSeleccionados,
+          tipo_grupo: tipoGrupo, modalidad, status: 'en_proceso',
+        })
+        .select('id').single();
       if (error) throw error;
+
+      const { error: pcError } = await supabase.from('pending_contacts').insert({
+        name: `${nombre} ${apellido}`.trim(),
+        phone: celular || '', status: 'pending', persona_id: personaData.id,
+      });
+      if (pcError) throw pcError;
+
       Alert.alert('¡Listo!', 'Persona agregada correctamente', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -101,38 +95,19 @@ export default function FormScreen({ navigation }: Props) {
       </View>
 
       <Text style={styles.label}>Nombre *</Text>
-      <TextInput style={styles.input} value={nombre} onChangeText={setNombre} placeholder="Juan" />
+      <TextInput style={styles.input} value={nombre} onChangeText={setNombre} placeholder="Juan" placeholderTextColor={theme.textMuted} />
 
       <Text style={styles.label}>Apellido *</Text>
-      <TextInput style={styles.input} value={apellido} onChangeText={setApellido} placeholder="Pérez" />
+      <TextInput style={styles.input} value={apellido} onChangeText={setApellido} placeholder="Pérez" placeholderTextColor={theme.textMuted} />
 
       <Text style={styles.label}>Edad *</Text>
-      <TextInput
-        style={styles.input}
-        value={edad}
-        onChangeText={setEdad}
-        placeholder="25"
-        keyboardType="numeric"
-      />
+      <TextInput style={styles.input} value={edad} onChangeText={setEdad} placeholder="25" keyboardType="numeric" placeholderTextColor={theme.textMuted} />
 
       <Text style={styles.label}>Celular</Text>
-      <TextInput
-        style={styles.input}
-        value={celular}
-        onChangeText={setCelular}
-        placeholder="+1 234 567 8900"
-        keyboardType="phone-pad"
-      />
+      <TextInput style={styles.input} value={celular} onChangeText={setCelular} placeholder="+1 234 567 8900" keyboardType="phone-pad" placeholderTextColor={theme.textMuted} />
 
       <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="juan@email.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+      <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="juan@email.com" keyboardType="email-address" autoCapitalize="none" placeholderTextColor={theme.textMuted} />
 
       <Text style={styles.label}>Género *</Text>
       <View style={styles.chips}>
@@ -142,9 +117,7 @@ export default function FormScreen({ navigation }: Props) {
             style={[styles.chip, genero === item.value && styles.chipSelected]}
             onPress={() => setGenero(item.value)}
           >
-            <Text style={[styles.chipText, genero === item.value && styles.chipTextSelected]}>
-              {item.label}
-            </Text>
+            <Text style={[styles.chipText, genero === item.value && styles.chipTextSelected]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -157,9 +130,7 @@ export default function FormScreen({ navigation }: Props) {
             style={[styles.chip, diasSeleccionados.includes(dia) && styles.chipSelected]}
             onPress={() => toggleDia(dia)}
           >
-            <Text style={[styles.chipText, diasSeleccionados.includes(dia) && styles.chipTextSelected]}>
-              {dia}
-            </Text>
+            <Text style={[styles.chipText, diasSeleccionados.includes(dia) && styles.chipTextSelected]}>{dia}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -172,9 +143,7 @@ export default function FormScreen({ navigation }: Props) {
             style={[styles.chip, tipoGrupo === item.value && styles.chipSelected]}
             onPress={() => setTipoGrupo(item.value)}
           >
-            <Text style={[styles.chipText, tipoGrupo === item.value && styles.chipTextSelected]}>
-              {item.label}
-            </Text>
+            <Text style={[styles.chipText, tipoGrupo === item.value && styles.chipTextSelected]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -187,57 +156,38 @@ export default function FormScreen({ navigation }: Props) {
             style={[styles.chip, modalidad === item.value && styles.chipSelected]}
             onPress={() => setModalidad(item.value)}
           >
-            <Text style={[styles.chipText, modalidad === item.value && styles.chipTextSelected]}>
-              {item.label}
-            </Text>
+            <Text style={[styles.chipText, modalidad === item.value && styles.chipTextSelected]}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Agregar persona</Text>
-        )}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Agregar persona</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 24, paddingBottom: 48 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 12 },
-  backBtn: { padding: 4 },
-  backText: { fontSize: 18, color: '#64748B' },
-  title: { fontSize: 22, fontWeight: '700', color: '#1E293B' },
-  label: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6, marginTop: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#1E293B',
-  },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  chipSelected: { backgroundColor: '#2563EB', borderColor: '#2563EB' },
-  chipText: { fontSize: 14, color: '#475569' },
-  chipTextSelected: { color: '#fff', fontWeight: '600' },
-  button: {
-    backgroundColor: '#2563EB',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});
+function makeStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.surface },
+    content: { padding: 24, paddingBottom: 48 },
+    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 12 },
+    backBtn: { padding: 4 },
+    backText: { fontSize: 18, color: theme.textSecondary },
+    title: { fontSize: 22, fontWeight: '700', color: theme.text },
+    label: { fontSize: 13, fontWeight: '600', color: theme.textSecondary, marginBottom: 6, marginTop: 16 },
+    input: {
+      borderWidth: 1, borderColor: theme.borderInput,
+      borderRadius: 8, padding: 12, fontSize: 15, color: theme.text,
+      backgroundColor: theme.surface,
+    },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { borderWidth: 1, borderColor: theme.borderInput, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+    chipSelected: { backgroundColor: theme.primary, borderColor: theme.primary },
+    chipText: { fontSize: 14, color: theme.textSecondary },
+    chipTextSelected: { color: '#fff', fontWeight: '600' },
+    button: { backgroundColor: theme.primary, padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 32 },
+    buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  });
+}
