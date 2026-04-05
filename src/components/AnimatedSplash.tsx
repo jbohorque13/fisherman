@@ -174,7 +174,7 @@ export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
   return (
     <Animated.View style={[styles.container, screenStyle]}>
       {/* Título */}
-      <Text style={[styles.title, { top: height * 0.38 }]}>Fisherman</Text>
+      <Text style={[styles.title, { top: height * 0.38 }]}>fisherman</Text>
 
       {/* Línea de agua */}
       <View style={[styles.waterLine, { top: waterY }]} />

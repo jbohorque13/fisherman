@@ -86,8 +86,8 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Fisherman</Text>
-      <Text style={styles.subtitle}>Encuentra tu grupo</Text>
+      <Text style={styles.title}>fisherman</Text>
+      <Text style={styles.subtitle}>Encuentra grupos o integra personas. </Text>
 
       <TouchableOpacity
         style={styles.button}
