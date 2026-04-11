@@ -37,7 +37,9 @@ export default function IntegrationListScreen({ navigation }: Props) {
     const { data: pendingData, error: pendingError } = await supabase
       .from('pending_contacts')
       .select('id, name, phone, status, persona:personas(edad, genero, tipo_grupo, modalidad)')
-      .eq('status', 'pending').order('name');
+      .eq('status', 'pending')
+      .eq('integrador_id', user.id)
+      .order('name');
 
     if (pendingError) Alert.alert('Error', pendingError.message);
     else {

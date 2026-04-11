@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, ActionSheetIOS, Platform,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +34,17 @@ const ROLE_COLORS: Record<UserRole, string> = {
   admin: '#DC2626',
 };
 
-type Tab = 'pending' | 'all';
+type Tab = 'pending' | 'all' | 'ai';
+
+type AILog = {
+  id: string;
+  ran_at: string;
+  processed: number;
+  assigned: number;
+  skipped: number;
+  error: string | null;
+  model: string;
+};
 
 export default function AdminScreen() {
   const theme = useTheme();
@@ -44,6 +55,8 @@ export default function AdminScreen() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [aiLogs, setAiLogs] = useState<AILog[]>([]);
+  const [aiRunning, setAiRunning] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -119,6 +132,38 @@ export default function AdminScreen() {
     }
   };
 
+  const loadAILogs = async () => {
+    const { data } = await supabase
+      .from('ai_assignment_logs')
+      .select('*')
+      .order('ran_at', { ascending: false })
+      .limit(10);
+    setAiLogs((data ?? []) as AILog[]);
+  };
+
+  const runAIAssignment = async () => {
+    setAiRunning(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke(
+        'assign-personas-ai',
+        { method: 'POST', body: {} }
+      );
+      if (error) throw new Error(error.message);
+      if (!result?.success && result?.error) throw new Error(result.error);
+      Alert.alert(
+        'Asignación completada',
+        result?.message
+          ? result.message
+          : `${result?.assigned ?? 0} persona(s) asignada(s) de ${result?.processed ?? 0} evaluadas`
+      );
+      await loadAILogs();
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setAiRunning(false);
+    }
+  };
+
   const applyRole = async (user: User, newRole: UserRole) => {
     if (newRole === user.role) return;
     setAssigning(user.id);
@@ -169,6 +214,14 @@ export default function AdminScreen() {
         >
           <Text style={[styles.tabText, tab === 'all' && styles.tabTextActive]}>
             Todos los usuarios
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'ai' && styles.tabActive]}
+          onPress={() => { setTab('ai'); loadAILogs(); }}
+        >
+          <Text style={[styles.tabText, tab === 'ai' && styles.tabTextActive]}>
+            IA
           </Text>
         </TouchableOpacity>
       </View>
@@ -247,6 +300,66 @@ export default function AdminScreen() {
         />
       )}
 
+      {/* Pestaña IA */}
+      {tab === 'ai' && (
+        <ScrollView contentContainerStyle={styles.list}>
+          {/* Botón trigger manual */}
+          <TouchableOpacity
+            style={[styles.aiBtn, aiRunning && styles.aiBtnDisabled]}
+            onPress={runAIAssignment}
+            disabled={aiRunning}
+          >
+            {aiRunning
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Ionicons name="sparkles" size={18} color="#fff" />
+            }
+            <Text style={styles.aiBtnText}>
+              {aiRunning ? 'Asignando...' : 'Ejecutar asignación IA ahora'}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.aiSectionTitle}>Últimas 10 ejecuciones</Text>
+
+          {aiLogs.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="time-outline" size={40} color="#ccc" />
+              <Text style={styles.emptyText}>Sin ejecuciones aún</Text>
+            </View>
+          )}
+
+          {aiLogs.map((log) => (
+            <View key={log.id} style={[styles.card, log.error ? styles.cardError : null]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={styles.aiLogDate}>
+                  {new Date(log.ran_at).toLocaleString('es-AR', {
+                    day: '2-digit', month: '2-digit',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </Text>
+                <Text style={styles.aiLogModel}>{log.model}</Text>
+              </View>
+              {log.error ? (
+                <Text style={styles.aiLogError}>{log.error}</Text>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 16 }}>
+                  <Text style={styles.aiLogStat}>
+                    <Text style={styles.aiLogStatNum}>{log.processed}</Text> evaluados
+                  </Text>
+                  <Text style={styles.aiLogStat}>
+                    <Text style={[styles.aiLogStatNum, { color: '#16a34a' }]}>{log.assigned}</Text> asignados
+                  </Text>
+                  {log.skipped > 0 && (
+                    <Text style={styles.aiLogStat}>
+                      <Text style={[styles.aiLogStatNum, { color: '#d97706' }]}>{log.skipped}</Text> sin match
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
       <TouchableOpacity
         style={[styles.logoutBtn, { paddingBottom: 16 + insets.bottom }]}
         onPress={() => signOut()}
@@ -302,5 +415,19 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
       gap: 6, padding: 16,
     },
     logoutBtnText: { color: theme.textMuted, fontSize: 14 },
+    aiBtn: {
+      backgroundColor: theme.primary, borderRadius: 10,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: 8, paddingVertical: 13, marginBottom: 20,
+    },
+    aiBtnDisabled: { opacity: 0.6 },
+    aiBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    aiSectionTitle: { fontSize: 13, fontWeight: '600', color: theme.textMuted, marginBottom: 8 },
+    aiLogDate: { fontSize: 13, fontWeight: '600', color: theme.text },
+    aiLogModel: { fontSize: 11, color: theme.textMuted },
+    aiLogStat: { fontSize: 13, color: theme.textSecondary },
+    aiLogStatNum: { fontWeight: '700', color: theme.text },
+    aiLogError: { fontSize: 13, color: theme.danger ?? '#dc2626' },
+    cardError: { borderColor: theme.dangerBorder ?? '#fca5a5' },
   });
 }
