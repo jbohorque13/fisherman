@@ -9,6 +9,6 @@ package-lock.json
 ios/
 android/
 .DS_Store
-babel.config.js
-tsconfig.json
 dist/
+test-whatsapp-bot.sh
+supabase/
