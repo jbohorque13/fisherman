@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, signOut } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
+import { formatPhoneInput, isValidPhone } from '../lib/phoneUtils';
 import AvatarPicker from '../components/AvatarPicker';
 
 export default function GuiaPerfilScreen() {
@@ -29,7 +30,7 @@ export default function GuiaPerfilScreen() {
     const { data } = await supabase.from('profiles').select('full_name, phone, age, address, avatar_url').eq('id', user.id).maybeSingle();
     if (data) {
       setFullName(data.full_name ?? '');
-      setPhone(data.phone ?? '');
+      setPhone(formatPhoneInput(data.phone ?? ''));
       setAge(data.age ? String(data.age) : '');
       setAddress(data.address ?? '');
       setAvatarUrl(data.avatar_url ?? null);
@@ -39,6 +40,7 @@ export default function GuiaPerfilScreen() {
 
   const guardar = async () => {
     if (!fullName.trim()) return Alert.alert('Requerido', 'El nombre es obligatorio');
+    if (!isValidPhone(phone)) return Alert.alert('Requerido', 'El teléfono de WhatsApp es obligatorio.\nEjemplo: +54 911 1234 5678');
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -75,8 +77,8 @@ export default function GuiaPerfilScreen() {
       <Text style={styles.label}>Email</Text>
       <TextInput style={[styles.input, styles.inputDisabled]} value={email} editable={false} />
 
-      <Text style={styles.label}>Teléfono</Text>
-      <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+57 300 000 0000" placeholderTextColor={theme.textMuted} keyboardType="phone-pad" />
+      <Text style={styles.label}>Teléfono WhatsApp *</Text>
+      <TextInput style={styles.input} value={phone} onChangeText={(v) => setPhone(formatPhoneInput(v))} placeholder="+54 911 1234 5678" placeholderTextColor={theme.textMuted} keyboardType="phone-pad" maxLength={20} />
 
       <Text style={styles.label}>Edad</Text>
       <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="30" placeholderTextColor={theme.textMuted} keyboardType="numeric" />

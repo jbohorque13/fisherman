@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, signOut } from '../lib/supabase';
-import { notifyUserRoleAssigned } from '../lib/notifications';
+import { notifyUserRoleAssigned, notifyGuideCompleteProfile } from '../lib/notifications';
 import { useTheme } from '../lib/theme';
 
 type UserRole = 'pending' | 'integrador' | 'guia' | 'admin';
@@ -92,6 +92,7 @@ export default function AdminScreen() {
           setAssigning(null);
           if (error) return Alert.alert('Error', error.message);
           notifyUserRoleAssigned(userId, role);
+          if (role === 'guia') notifyGuideCompleteProfile(userId).catch(() => {});
           await loadAll();
         },
       },
@@ -173,6 +174,7 @@ export default function AdminScreen() {
     if (error) return Alert.alert('Error', error.message);
     if (newRole === 'integrador' || newRole === 'guia') {
       notifyUserRoleAssigned(user.id, newRole);
+      if (newRole === 'guia') notifyGuideCompleteProfile(user.id).catch(() => {});
     }
     await loadAll();
   };

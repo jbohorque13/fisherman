@@ -9,8 +9,8 @@ import { initNotifications } from '../lib/notifications';
 export function useAppNotifications(
   onTap?: (data: Record<string, unknown>) => void,
 ): void {
-  const notifListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notifListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
     initNotifications().catch(console.warn);

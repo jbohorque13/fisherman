@@ -227,6 +227,15 @@ export async function notifyIntegradorRejected(
   );
 }
 
+export async function notifyGuideCompleteProfile(guideId: string): Promise<void> {
+  await sendPush(
+    guideId,
+    'Completá tu perfil',
+    'Agregá tu número de WhatsApp para poder recibir asignaciones de personas.',
+    { type: 'complete_profile', screen: 'GuiaOnboarding' },
+  );
+}
+
 export async function notifyIntegradorIntegrated(
   integradorId: string,
   personName: string,

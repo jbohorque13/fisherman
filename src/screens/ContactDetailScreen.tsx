@@ -12,7 +12,7 @@ import { notifyGuidePersonAssigned } from '../lib/notifications';
 import { TipoGrupo, Modalidad } from '../types';
 
 type Grupo = { id: string; nombre: string; tipo_grupo: TipoGrupo; modalidad: Modalidad; edad_min: number; edad_max: number; capacidad: number };
-type GuideWithGrupo = { id: string; full_name: string | null; email: string; avatar_url: string | null; grupo: Grupo | null };
+type GuideWithGrupo = { id: string; full_name: string | null; email: string; avatar_url: string | null; phone: string | null; grupo: Grupo | null };
 type PersonaData = { edad: number; genero: string; tipo_grupo: string; modalidad: string };
 type Props = { navigation: NativeStackNavigationProp<any>; route: RouteProp<any> };
 
@@ -47,7 +47,7 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
     setLoadingGuides(true);
     try {
       const [profilesRes, gruposRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, email, avatar_url').eq('role', 'guia'),
+        supabase.from('profiles').select('id, full_name, email, avatar_url, phone').eq('role', 'guia'),
         supabase.from('grupos').select('id, nombre, tipo_grupo, modalidad, edad_min, edad_max, capacidad, guide_id'),
       ]);
       if (profilesRes.error) throw profilesRes.error;
@@ -55,7 +55,7 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
       const gruposByGuide = new Map((gruposRes.data ?? []).map((g: any) => [g.guide_id, g]));
       const mapped: GuideWithGrupo[] = (profilesRes.data ?? []).map((p: any) => ({
         id: p.id, full_name: p.full_name, email: p.email, avatar_url: p.avatar_url ?? null,
-        grupo: gruposByGuide.get(p.id) ?? null,
+        phone: p.phone ?? null, grupo: gruposByGuide.get(p.id) ?? null,
       }));
       setGuides(mapped.filter((g) => g.grupo && matchesGrupo(persona, g.grupo)));
     } catch (err: any) {
@@ -80,16 +80,19 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
       if (contact.isRejected) {
         const { error } = await supabase.from('assigned_people').update({ status: 'pending', guide_id: selectedGuide, grupo_id: grupoId ?? null }).eq('id', contact.id);
         if (error) throw error;
+        notifyGuidePersonAssigned(selectedGuide, contact.name);
+        supabase.functions.invoke('notify-guide-whatsapp', { body: { assigned_person_id: contact.id } }).catch(console.error);
       } else {
         const { error } = await supabase.from('pending_contacts').update({ status: 'assigned' }).eq('id', contact.id);
         if (error) throw error;
-        const { error: apError } = await supabase.from('assigned_people').insert({
+        const { data: apData, error: apError } = await supabase.from('assigned_people').insert({
           full_name: contact.name, phone: contact.phone, status: 'pending',
           guide_id: selectedGuide, grupo_id: grupoId, created_by: user?.id,
-        });
+        }).select('id').single();
         if (apError) throw apError;
+        notifyGuidePersonAssigned(selectedGuide, contact.name);
+        supabase.functions.invoke('notify-guide-whatsapp', { body: { assigned_person_id: apData.id } }).catch(console.error);
       }
-      notifyGuidePersonAssigned(selectedGuide, contact.name);
       Alert.alert('¡Listo!', 'Persona asignada al guía', [{ text: 'OK', onPress: () => { onDone?.(); navigation.goBack(); } }]);
     } catch (err: any) {
       Alert.alert('Error', err.message);
@@ -179,13 +182,19 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
             guides.map((g) => {
               const selected = selectedGuide === g.id;
               const grupo = g.grupo!;
+              const noPhone = !g.phone;
               return (
-                <TouchableOpacity key={g.id} style={[styles.guideCard, selected && styles.guideCardSelected]} onPress={() => setSelectedGuide(g.id)} activeOpacity={0.8}>
+                <TouchableOpacity
+                  key={g.id}
+                  style={[styles.guideCard, selected && styles.guideCardSelected, noPhone && styles.guideCardDisabled]}
+                  onPress={() => noPhone ? Alert.alert('Sin teléfono', `${g.full_name ?? g.email} no tiene número de WhatsApp registrado. No puede recibir asignaciones hasta que complete su perfil.`) : setSelectedGuide(g.id)}
+                  activeOpacity={noPhone ? 1 : 0.8}
+                >
                   <View style={styles.guideAvatarWrap}>
                     {g.avatar_url ? (
-                      <Image source={{ uri: g.avatar_url }} style={styles.guideAvatar} />
+                      <Image source={{ uri: g.avatar_url }} style={[styles.guideAvatar, noPhone && { opacity: 0.4 }]} />
                     ) : (
-                      <View style={[styles.guideAvatar, styles.guideAvatarPlaceholder]}>
+                      <View style={[styles.guideAvatar, styles.guideAvatarPlaceholder, noPhone && { opacity: 0.4 }]}>
                         <Ionicons name="person" size={22} color={theme.purple} />
                       </View>
                     )}
@@ -196,13 +205,21 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
                     )}
                   </View>
                   <View style={styles.guideInfo}>
-                    <Text style={[styles.guideName, selected && { color: theme.primary }]}>{g.full_name ?? g.email}</Text>
+                    <Text style={[styles.guideName, selected && { color: theme.primary }, noPhone && { color: theme.textMuted }]}>{g.full_name ?? g.email}</Text>
                     <Text style={styles.grupoName}>{grupo.nombre}</Text>
-                    <View style={styles.grupoBadges}>
-                      <View style={styles.gbadge}><Text style={styles.gbadgeText}>{TIPO_LABELS[grupo.tipo_grupo] ?? grupo.tipo_grupo}</Text></View>
-                      <View style={styles.gbadge}><Text style={styles.gbadgeText}>{grupo.modalidad}</Text></View>
-                      <View style={styles.gbadge}><Text style={styles.gbadgeText}>{grupo.edad_min}–{grupo.edad_max} años</Text></View>
-                    </View>
+                    {noPhone && (
+                      <View style={styles.noPhoneBadge}>
+                        <Ionicons name="warning-outline" size={12} color={theme.danger} />
+                        <Text style={styles.noPhoneBadgeText}>Sin teléfono — perfil incompleto</Text>
+                      </View>
+                    )}
+                    {!noPhone && (
+                      <View style={styles.grupoBadges}>
+                        <View style={styles.gbadge}><Text style={styles.gbadgeText}>{TIPO_LABELS[grupo.tipo_grupo] ?? grupo.tipo_grupo}</Text></View>
+                        <View style={styles.gbadge}><Text style={styles.gbadgeText}>{grupo.modalidad}</Text></View>
+                        <View style={styles.gbadge}><Text style={styles.gbadgeText}>{grupo.edad_min}–{grupo.edad_max} años</Text></View>
+                      </View>
+                    )}
                   </View>
                 </TouchableOpacity>
               );
@@ -279,5 +296,8 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
     cancelBtnText: { fontSize: 14, color: theme.textSecondary, fontWeight: '600' },
     confirmBtn: { flex: 1, backgroundColor: theme.primary, borderRadius: 8, padding: 13, alignItems: 'center' },
     confirmBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    guideCardDisabled: { opacity: 0.6, borderColor: theme.border, backgroundColor: theme.surfaceAlt },
+    noPhoneBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    noPhoneBadgeText: { fontSize: 11, color: theme.danger, fontWeight: '500' },
   });
 }

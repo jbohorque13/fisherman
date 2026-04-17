@@ -22,6 +22,7 @@ import EmailLoginScreen from './src/screens/EmailLoginScreen';
 import PendingScreen from './src/screens/PendingScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import GuiaTabNavigator from './src/navigation/GuiaTabNavigator';
+import GuiaOnboardingScreen from './src/screens/GuiaOnboardingScreen';
 import PersonDetailScreen from './src/screens/PersonDetailScreen';
 import FormScreen from './src/screens/FormScreen';
 import IntegrationListScreen from './src/screens/IntegrationListScreen';
@@ -64,6 +65,9 @@ function AppScreens() {
   if (profile.role === 'admin') return <AdminScreen />;
 
   if (profile.role === 'guia') {
+    if (!profile.phone) {
+      return <GuiaOnboardingScreen profile={profile} onComplete={fetchProfile} />;
+    }
     return (
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="GuiaHome" component={GuiaTabNavigator} />

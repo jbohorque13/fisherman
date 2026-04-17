@@ -5,8 +5,8 @@ import { registerPushToken } from '../lib/notifications';
 export function usePushNotifications(
   onTap?: (data: Record<string, unknown>) => void,
 ) {
-  const notifListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notifListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
     registerPushToken();

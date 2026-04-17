@@ -8,6 +8,9 @@ export interface Profile {
   email: string;
   nombre: string;
   apellido: string;
+  edad: number;
+  tipo_grupo: TipoGrupo;
+  modalidad: Modalidad;
 }
 
 export interface Persona {
