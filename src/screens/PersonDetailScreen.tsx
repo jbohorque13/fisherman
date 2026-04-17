@@ -47,13 +47,13 @@ export default function PersonDetailScreen({ navigation, route }: Props) {
   };
 
   const confirmReject = async () => {
-    if (!rejectReason.trim()) return Alert.alert('Requerido', 'Escribe el motivo del rechazo');
+    if (!rejectReason.trim()) return Alert.alert('Requerido', 'Escribe el motivo de la reasignación');
     setLoading(true);
     try {
       const { error } = await supabase.from('assigned_people').update({ status: 'rejected' }).eq('id', person.id);
       if (error) throw error;
       if (person.created_by) await notifyIntegradorRejected(person.created_by, person.full_name, rejectReason.trim());
-      Alert.alert('Rechazado', 'La persona fue devuelta al integrador', [{ text: 'OK', onPress: () => { onDone?.(); navigation.goBack(); } }]);
+      Alert.alert('Reasignado', 'La persona fue devuelta al integrador para reasignar', [{ text: 'OK', onPress: () => { onDone?.(); navigation.goBack(); } }]);
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -113,7 +113,7 @@ export default function PersonDetailScreen({ navigation, route }: Props) {
           <View style={styles.row}>
             <TouchableOpacity style={styles.rejectBtn} onPress={() => setShowRejectInput(true)} disabled={loading}>
               <Ionicons name="close-circle" size={18} color={theme.danger} />
-              <Text style={styles.rejectBtnText}>Rechazar</Text>
+              <Text style={styles.rejectBtnText}>Reasignar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.acceptBtn} onPress={acceptAssignment} disabled={loading}>
               {loading ? <ActivityIndicator color="#fff" /> : (
@@ -126,14 +126,14 @@ export default function PersonDetailScreen({ navigation, route }: Props) {
 
       {isPending && showRejectInput && (
         <>
-          <Text style={styles.sectionTitle}>Motivo del rechazo</Text>
+          <Text style={styles.sectionTitle}>Motivo de la reasignación</Text>
           <TextInput style={styles.reasonInput} placeholder="Ej: no coincide con el grupo, ya tiene guía..." placeholderTextColor={theme.textMuted} value={rejectReason} onChangeText={setRejectReason} multiline numberOfLines={3} />
           <View style={styles.row}>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowRejectInput(false); setRejectReason(''); }}>
               <Text style={styles.cancelBtnText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: theme.danger }]} onPress={confirmReject} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Confirmar rechazo</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Confirmar reasignación</Text>}
             </TouchableOpacity>
           </View>
         </>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, Linking, RefreshControl,
@@ -88,7 +88,7 @@ export default function IntegrationListScreen({ navigation }: Props) {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tab, tab === 'rejected' && styles.tabActive]} onPress={() => setTab('rejected')}>
           <Text style={[styles.tabText, tab === 'rejected' && styles.tabTextActive]}>
-            Rechazados{rejected.length > 0 && <Text style={styles.tabBadgeRed}> {rejected.length}</Text>}
+            Reasignados{rejected.length > 0 && <Text style={styles.tabBadgeRed}> {rejected.length}</Text>}
           </Text>
         </TouchableOpacity>
       </View>
@@ -106,7 +106,7 @@ export default function IntegrationListScreen({ navigation }: Props) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name={tab === 'pending' ? 'checkmark-circle-outline' : 'checkmark-done-outline'} size={48} color={theme.borderInput} />
-            <Text style={styles.empty}>{tab === 'pending' ? 'No hay contactos pendientes' : 'No hay rechazados'}</Text>
+            <Text style={styles.empty}>{tab === 'pending' ? 'No hay contactos pendientes' : 'No hay reasignados'}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -117,7 +117,7 @@ export default function IntegrationListScreen({ navigation }: Props) {
               {item.isRejected && (
                 <View style={styles.rejectedBadge}>
                   <Ionicons name="close-circle" size={12} color={theme.danger} />
-                  <Text style={styles.rejectedBadgeText}>Rechazado por guía</Text>
+                  <Text style={styles.rejectedBadgeText}>Pendiente de reasignación</Text>
                 </View>
               )}
             </View>

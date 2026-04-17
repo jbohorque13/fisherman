@@ -221,8 +221,8 @@ export async function notifyIntegradorRejected(
 ): Promise<void> {
   await sendPush(
     integradorId,
-    'Asignación rechazada',
-    `El guía rechazó a ${personName}: "${reason}"`,
+    'Persona para reasignar',
+    `El guía reasignó a ${personName}: "${reason}"`,
     { type: 'assignment_rejected', person_name: personName },
   );
 }

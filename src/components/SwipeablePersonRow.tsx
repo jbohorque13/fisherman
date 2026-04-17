@@ -17,7 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending:    'En espera',
   in_process: 'En proceso',
   integrated: 'Integrado',
-  rejected:   'Rechazado',
+  rejected:   'Reasignado',
 };
 
 export default function SwipeablePersonRow({ person, onDelete }: Props) {
