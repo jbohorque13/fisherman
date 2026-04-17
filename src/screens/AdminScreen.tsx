@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase, signOut } from '../lib/supabase';
 import { notifyUserRoleAssigned, notifyGuideCompleteProfile } from '../lib/notifications';
 import { useTheme } from '../lib/theme';
+import AdminReportTab from './AdminReportTab';
 
 type UserRole = 'pending' | 'integrador' | 'guia' | 'admin';
 
@@ -34,7 +35,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   admin: '#DC2626',
 };
 
-type Tab = 'pending' | 'all' | 'ai';
+type Tab = 'pending' | 'all' | 'ai' | 'report';
 
 type AILog = {
   id: string;
@@ -226,6 +227,14 @@ export default function AdminScreen() {
             IA
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, tab === 'report' && styles.tabActive]}
+          onPress={() => setTab('report')}
+        >
+          <Text style={[styles.tabText, tab === 'report' && styles.tabTextActive]}>
+            Reportes
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Pestaña Pendientes */}
@@ -361,6 +370,9 @@ export default function AdminScreen() {
           ))}
         </ScrollView>
       )}
+
+      {/* Pestaña Reportes */}
+      {tab === 'report' && <AdminReportTab />}
 
       <TouchableOpacity
         style={[styles.logoutBtn, { paddingBottom: 16 + insets.bottom }]}
