@@ -66,13 +66,13 @@ export default function GuiaOnboardingScreen({ profile, onComplete }: Props) {
           style={styles.input}
           value={phone}
           onChangeText={handlePhoneChange}
-          placeholder="+54 911 1234 5678"
+          placeholder="+54 9 11 1234 5678"
           placeholderTextColor={theme.textMuted}
           keyboardType="phone-pad"
           autoFocus
           maxLength={20}
         />
-        <Text style={styles.hint}>Formato internacional. Ejemplo: +54 911 1234 5678</Text>
+        <Text style={styles.hint}>Argentina: +54 9 11 XXXX XXXX — el 9 va después del código de país</Text>
 
         <TouchableOpacity style={styles.saveBtn} onPress={guardar} disabled={saving}>
           {saving

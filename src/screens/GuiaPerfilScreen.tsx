@@ -78,7 +78,7 @@ export default function GuiaPerfilScreen() {
       <TextInput style={[styles.input, styles.inputDisabled]} value={email} editable={false} />
 
       <Text style={styles.label}>Teléfono WhatsApp *</Text>
-      <TextInput style={styles.input} value={phone} onChangeText={(v) => setPhone(formatPhoneInput(v))} placeholder="+54 911 1234 5678" placeholderTextColor={theme.textMuted} keyboardType="phone-pad" maxLength={20} />
+      <TextInput style={styles.input} value={phone} onChangeText={(v) => setPhone(formatPhoneInput(v))} placeholder="+54 9 11 1234 5678" placeholderTextColor={theme.textMuted} keyboardType="phone-pad" maxLength={20} />
 
       <Text style={styles.label}>Edad</Text>
       <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="30" placeholderTextColor={theme.textMuted} keyboardType="numeric" />
