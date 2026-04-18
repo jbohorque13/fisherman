@@ -26,6 +26,7 @@
         "backgroundColor": "#2563EB"
       },
       "package": "com.josue.fisherman.app",
+      "softwareKeyboardLayoutMode": "pan",
       "intentFilters": [
         {
           "action": "VIEW",

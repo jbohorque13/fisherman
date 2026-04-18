@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase, signOut } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
@@ -65,7 +65,8 @@ export default function GuiaPerfilScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.avatarContainer}>
         <AvatarPicker userId={userId} avatarUrl={avatarUrl} size={90} accentColor={theme.purple} onUploaded={(url) => setAvatarUrl(url)} />
         <Text style={styles.roleLabel}>Guía</Text>
@@ -95,6 +96,7 @@ export default function GuiaPerfilScreen() {
         <Text style={styles.logoutText}>Cerrar sesión</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
