@@ -142,7 +142,7 @@ async function sendPush(
 
 // ─── Acciones de negocio ──────────────────────────────────────────────────────
 
-export async function notifyAdminsUserWaiting(userEmail: string): Promise<void> {
+export async function notifyAdminsUserWaiting(userEmail: string, userName?: string): Promise<void> {
   const { data: admins } = await supabase
     .from('profiles')
     .select('id')
@@ -150,16 +150,19 @@ export async function notifyAdminsUserWaiting(userEmail: string): Promise<void> 
 
   console.log('[Push] Admins encontrados:', admins?.length ?? 0);
 
-  await Promise.all(
-    (admins ?? []).map((a) =>
+  await Promise.all([
+    ...( admins ?? []).map((a) =>
       sendPush(
         a.id,
         'Usuario esperando rol',
-        `${userEmail} sigue esperando que le asignes un rol.`,
+        `${userName ?? userEmail} sigue esperando que le asignes un rol.`,
         { type: 'user_waiting', email: userEmail },
       ),
     ),
-  );
+    supabase.functions.invoke('notify-admin-pending-user', {
+      body: { pendingUserEmail: userEmail, pendingUserName: userName },
+    }).catch((e) => console.warn('[Email] notify-admin-pending-user falló:', e)),
+  ]);
 }
 
 export async function notifyAdminsNewUser(newUserEmail: string): Promise<void> {
