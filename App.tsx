@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
@@ -109,7 +108,7 @@ export default function App() {
       setSession(session);
       setLoading(false);
 
-      if (!session && Platform.OS === 'android') {
+      if (!session) {
         const url = await Linking.getInitialURL();
         if (url) {
           const code = extractCode(url);
