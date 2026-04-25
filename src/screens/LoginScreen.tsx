@@ -11,18 +11,12 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { makeRedirectUri } from 'expo-auth-session';
 import { Platform } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
-import { RootStackParamList } from '../types';
 import { useTheme } from '../lib/theme';
 
 WebBrowser.maybeCompleteAuthSession();
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
-};
-
-export default function LoginScreen({ navigation }: Props) {
+export default function LoginScreen() {
   const theme = useTheme();
   const styles = makeStyles(theme);
   const [loading, setLoading] = useState(false);
@@ -101,13 +95,6 @@ export default function LoginScreen({ navigation }: Props) {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.buttonOutline}
-        onPress={() => navigation.navigate('EmailLogin')}
-        disabled={loading}
-      >
-        <Text style={styles.buttonOutlineText}>Continuar con Email</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -142,21 +129,6 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
     },
     buttonText: {
       color: '#fff',
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    buttonOutline: {
-      borderWidth: 1.5,
-      borderColor: theme.primary,
-      paddingHorizontal: 32,
-      paddingVertical: 14,
-      borderRadius: 8,
-      width: '100%',
-      alignItems: 'center',
-      marginTop: 12,
-    },
-    buttonOutlineText: {
-      color: theme.primary,
       fontSize: 16,
       fontWeight: '600',
     },

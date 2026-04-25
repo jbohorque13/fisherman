@@ -51,7 +51,6 @@ export interface Notificacion {
 
 export type RootStackParamList = {
   Login: undefined;
-  EmailLogin: undefined;
   Main: undefined;
   Form: undefined;
   IntegrationList: undefined;
