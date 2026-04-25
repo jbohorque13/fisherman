@@ -12,6 +12,7 @@ import { useTheme } from '../lib/theme';
 import IntegrarHelpOverlay from '../components/IntegrarHelpOverlay';
 
 const HELP_SEEN_KEY = 'help.integrar.seen.v1';
+const CACHE_KEY_PREFIX = 'integrar.cache.v1.';
 
 type PersonaData = { edad: number | null; genero: string | null; tipo_grupo: string | null; modalidad: string | null };
 type Contact = { id: string; name: string; phone: string; status: string; persona: PersonaData | null; isRejected?: boolean };
@@ -30,7 +31,7 @@ export default function IntegrationListScreen({ navigation }: Props) {
   const [search, setSearch] = useState('');
   const [showHelp, setShowHelp] = useState(false);
 
-  useFocusEffect(useCallback(() => { loadAll(true); }, []));
+  useFocusEffect(useCallback(() => { loadAll(); }, []));
 
   useEffect(() => {
     (async () => {
@@ -44,41 +45,61 @@ export default function IntegrationListScreen({ navigation }: Props) {
     await AsyncStorage.setItem(HELP_SEEN_KEY, '1');
   }, []);
 
-  const onRefresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
+  const onRefresh = async () => { setRefreshing(true); await loadAll(); setRefreshing(false); };
 
-  const loadAll = async (showLoader = true) => {
-    if (showLoader) setLoading(true);
+  const loadAll = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
 
-    const { data: pendingData, error: pendingError } = await supabase
-      .from('pending_contacts')
-      .select('id, name, phone, status, persona:personas(edad, genero, tipo_grupo, modalidad)')
-      .eq('status', 'pending')
-      .eq('integrador_id', user.id)
-      .order('name');
+    const cacheKey = `${CACHE_KEY_PREFIX}${user.id}`;
+    try {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as { contacts: Contact[]; rejected: Contact[] };
+        setContacts(parsed.contacts ?? []);
+        setRejected(parsed.rejected ?? []);
+        setLoading(false);
+      }
+    } catch {}
 
-    if (pendingError) Alert.alert('Error', pendingError.message);
+    const [pendingRes, rejectedRes] = await Promise.all([
+      supabase
+        .from('pending_contacts')
+        .select('id, name, phone, status, persona:personas(edad, genero, tipo_grupo, modalidad)')
+        .eq('status', 'pending')
+        .eq('integrador_id', user.id)
+        .order('name'),
+      supabase
+        .from('assigned_people')
+        .select('id, full_name, phone, status, created_by')
+        .eq('status', 'rejected').eq('created_by', user.id).order('full_name'),
+    ]);
+
+    let nextContacts: Contact[] | null = null;
+    let nextRejected: Contact[] | null = null;
+
+    if (pendingRes.error) Alert.alert('Error', pendingRes.error.message);
     else {
-      setContacts((pendingData ?? []).map((c: any) => ({
+      nextContacts = (pendingRes.data ?? []).map((c: any) => ({
         id: c.id, name: c.name, phone: c.phone, status: c.status,
         persona: Array.isArray(c.persona) ? (c.persona[0] ?? null) : (c.persona ?? null),
-      })));
+      }));
+      setContacts(nextContacts);
     }
 
-    const { data: rejectedData, error: rejectedError } = await supabase
-      .from('assigned_people')
-      .select('id, full_name, phone, status, created_by')
-      .eq('status', 'rejected').eq('created_by', user.id).order('full_name');
-
-    if (rejectedError) Alert.alert('Error', rejectedError.message);
+    if (rejectedRes.error) Alert.alert('Error', rejectedRes.error.message);
     else {
-      setRejected((rejectedData ?? []).map((r: any) => ({
+      nextRejected = (rejectedRes.data ?? []).map((r: any) => ({
         id: r.id, name: r.full_name, phone: r.phone, status: r.status, persona: null, isRejected: true,
-      })));
+      }));
+      setRejected(nextRejected);
     }
 
-    if (showLoader) setLoading(false);
+    setLoading(false);
+
+    if (nextContacts && nextRejected) {
+      AsyncStorage.setItem(cacheKey, JSON.stringify({ contacts: nextContacts, rejected: nextRejected })).catch(() => {});
+    }
   };
 
   const openWhatsApp = (phone: string) => {
@@ -144,7 +165,7 @@ export default function IntegrationListScreen({ navigation }: Props) {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.detailBtn, item.isRejected && styles.detailBtnRejected]}
-                onPress={() => navigation.navigate('ContactDetail', { contact: item, onDone: () => loadAll(false) })}
+                onPress={() => navigation.navigate('ContactDetail', { contact: item, onDone: () => loadAll() })}
               >
                 <Text style={styles.detailBtnText}>{item.isRejected ? 'Reasignar' : 'Gestionar'}</Text>
               </TouchableOpacity>
