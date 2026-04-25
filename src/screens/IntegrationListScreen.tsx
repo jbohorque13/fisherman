@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert, Linking, RefreshControl,
@@ -6,8 +6,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
+import IntegrarHelpOverlay from '../components/IntegrarHelpOverlay';
+
+const HELP_SEEN_KEY = 'help.integrar.seen.v1';
 
 type PersonaData = { edad: number | null; genero: string | null; tipo_grupo: string | null; modalidad: string | null };
 type Contact = { id: string; name: string; phone: string; status: string; persona: PersonaData | null; isRejected?: boolean };
@@ -24,8 +28,21 @@ export default function IntegrationListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
 
   useFocusEffect(useCallback(() => { loadAll(true); }, []));
+
+  useEffect(() => {
+    (async () => {
+      const seen = await AsyncStorage.getItem(HELP_SEEN_KEY);
+      if (!seen) setShowHelp(true);
+    })();
+  }, []);
+
+  const dismissHelp = useCallback(async () => {
+    setShowHelp(false);
+    await AsyncStorage.setItem(HELP_SEEN_KEY, '1');
+  }, []);
 
   const onRefresh = async () => { setRefreshing(true); await loadAll(false); setRefreshing(false); };
 
@@ -135,6 +152,8 @@ export default function IntegrationListScreen({ navigation }: Props) {
           </View>
         )}
       />
+
+      {showHelp && <IntegrarHelpOverlay onDismiss={dismissHelp} />}
     </View>
   );
 }
