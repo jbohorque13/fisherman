@@ -13,15 +13,17 @@ import { TipoGrupo, Modalidad } from '../types';
 
 type Grupo = { id: string; nombre: string; tipo_grupo: TipoGrupo; modalidad: Modalidad; edad_min: number; edad_max: number; capacidad: number };
 type GuideWithGrupo = { id: string; full_name: string | null; email: string; avatar_url: string | null; phone: string | null; grupo: Grupo | null };
-type PersonaData = { edad: number; genero: string; tipo_grupo: string; modalidad: string };
+type PersonaData = { edad: number | null; genero: string | null; tipo_grupo: string | null; modalidad: string | null };
 type Props = { navigation: NativeStackNavigationProp<any>; route: RouteProp<any> };
 
 const TIPO_LABELS: Record<string, string> = { chicas: 'Chicas', chicos: 'Chicos', mixto_solteros: 'Mixto', casados: 'Casados' };
 
+// Si un campo de la persona es null, no se filtra por ese criterio:
+// los datos faltantes se completan después, no deberían bloquear la asignación.
 function matchesGrupo(persona: PersonaData | null, grupo: Grupo): boolean {
   if (!persona) return true;
-  if (persona.edad < grupo.edad_min || persona.edad > grupo.edad_max) return false;
-  if (persona.modalidad !== grupo.modalidad) return false;
+  if (persona.edad != null && (persona.edad < grupo.edad_min || persona.edad > grupo.edad_max)) return false;
+  if (persona.modalidad != null && persona.modalidad !== grupo.modalidad) return false;
   if (persona.genero === 'femenino' && grupo.tipo_grupo === 'chicos') return false;
   if (persona.genero === 'masculino' && grupo.tipo_grupo === 'chicas') return false;
   return true;
@@ -123,12 +125,12 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
       <Text style={styles.name}>{contact.name}</Text>
       <Text style={styles.phone}>{contact.phone}</Text>
 
-      {persona && (
+      {persona && (persona.edad != null || persona.genero || persona.tipo_grupo || persona.modalidad) && (
         <View style={styles.personaBadges}>
-          <View style={styles.pbadge}><Text style={styles.pbadgeText}>{persona.edad} años</Text></View>
-          <View style={styles.pbadge}><Text style={styles.pbadgeText}>{persona.genero}</Text></View>
-          <View style={styles.pbadge}><Text style={styles.pbadgeText}>{TIPO_LABELS[persona.tipo_grupo] ?? persona.tipo_grupo}</Text></View>
-          <View style={styles.pbadge}><Text style={styles.pbadgeText}>{persona.modalidad}</Text></View>
+          {persona.edad != null && <View style={styles.pbadge}><Text style={styles.pbadgeText}>{persona.edad} años</Text></View>}
+          {persona.genero && <View style={styles.pbadge}><Text style={styles.pbadgeText}>{persona.genero}</Text></View>}
+          {persona.tipo_grupo && <View style={styles.pbadge}><Text style={styles.pbadgeText}>{TIPO_LABELS[persona.tipo_grupo] ?? persona.tipo_grupo}</Text></View>}
+          {persona.modalidad && <View style={styles.pbadge}><Text style={styles.pbadgeText}>{persona.modalidad}</Text></View>}
         </View>
       )}
 
@@ -167,10 +169,10 @@ export default function ContactDetailScreen({ navigation, route }: Props) {
                   <Text style={styles.emptyGuidesTitle}>Sin guías compatibles</Text>
                   <Text style={styles.emptyGuidesText}>Ningún grupo activo cumple todos los criterios de esta persona:</Text>
                   <View style={styles.criteriaList}>
-                    <Text style={styles.criteriaItem}>• Edad: {persona.edad} años</Text>
-                    <Text style={styles.criteriaItem}>• Sexo: {persona.genero}</Text>
-                    <Text style={styles.criteriaItem}>• Modalidad: {persona.modalidad}</Text>
-                    <Text style={styles.criteriaItem}>• Tipo: {TIPO_LABELS[persona.tipo_grupo] ?? persona.tipo_grupo}</Text>
+                    {persona.edad != null && <Text style={styles.criteriaItem}>• Edad: {persona.edad} años</Text>}
+                    {persona.genero && <Text style={styles.criteriaItem}>• Sexo: {persona.genero}</Text>}
+                    {persona.modalidad && <Text style={styles.criteriaItem}>• Modalidad: {persona.modalidad}</Text>}
+                    {persona.tipo_grupo && <Text style={styles.criteriaItem}>• Tipo: {TIPO_LABELS[persona.tipo_grupo] ?? persona.tipo_grupo}</Text>}
                   </View>
                   <Text style={styles.emptyGuidesHint}>Puedes moverla a excepciones o esperar a que un guía cree un grupo compatible.</Text>
                 </>

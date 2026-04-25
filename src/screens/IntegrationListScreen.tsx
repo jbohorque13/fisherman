@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 
-type PersonaData = { edad: number; genero: string; tipo_grupo: string; modalidad: string };
+type PersonaData = { edad: number | null; genero: string | null; tipo_grupo: string | null; modalidad: string | null };
 type Contact = { id: string; name: string; phone: string; status: string; persona: PersonaData | null; isRejected?: boolean };
 type Tab = 'pending' | 'rejected';
 type Props = { navigation: NativeStackNavigationProp<any> };

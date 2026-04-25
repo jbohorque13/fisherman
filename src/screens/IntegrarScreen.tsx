@@ -150,6 +150,12 @@ export default function IntegrarScreen() {
           renderItem={({ item }) => {
             const color = STATUS_COLORS[item.status];
             const label = STATUS_TABS.find((s) => s.value === item.status)?.label;
+            const metaParts = [
+              item.edad != null ? `${item.edad} años` : null,
+              item.genero,
+              item.tipo_grupo ? item.tipo_grupo.replace('_', ' ') : null,
+              item.modalidad,
+            ].filter(Boolean);
             return (
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -160,9 +166,9 @@ export default function IntegrarScreen() {
                     <Text style={[styles.badgeText, { color }]}>{label}</Text>
                   </View>
                 </View>
-                <Text style={styles.cardMeta}>
-                  {item.edad} años · {item.genero} · {item.tipo_grupo.replace('_', ' ')} · {item.modalidad}
-                </Text>
+                {metaParts.length > 0 && (
+                  <Text style={styles.cardMeta}>{metaParts.join(' · ')}</Text>
+                )}
                 {item.celular ? <Text style={styles.cardContact}>{item.celular}</Text> : null}
                 {item.email ? <Text style={styles.cardContact}>{item.email}</Text> : null}
               </View>

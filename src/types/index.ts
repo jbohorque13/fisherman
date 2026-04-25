@@ -17,13 +17,13 @@ export interface Persona {
   id: string;
   nombre: string;
   apellido: string;
-  edad: number;
+  edad: number | null;
   celular: string | null;
   email: string | null;
-  genero: Genero;
+  genero: Genero | null;
   dias_disponibles: string[];
-  tipo_grupo: TipoGrupo;
-  modalidad: Modalidad;
+  tipo_grupo: TipoGrupo | null;
+  modalidad: Modalidad | null;
   status: PersonaStatus;
   grupo_id: string | null;
   created_at: string;
