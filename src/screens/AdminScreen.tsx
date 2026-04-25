@@ -11,6 +11,7 @@ import { notifyUserRoleAssigned, notifyGuideCompleteProfile } from '../lib/notif
 import { useTheme } from '../lib/theme';
 import AdminReportTab from './AdminReportTab';
 import AdminImportTab from './AdminImportTab';
+import AdminPeopleTab from './AdminPeopleTab';
 
 type UserRole = 'pending' | 'integrador' | 'guia' | 'admin';
 
@@ -36,7 +37,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   admin: '#DC2626',
 };
 
-type Tab = 'pending' | 'all' | 'ai' | 'report' | 'import';
+type Tab = 'pending' | 'all' | 'ai' | 'report' | 'import' | 'people';
 
 type AILog = {
   id: string;
@@ -243,6 +244,14 @@ export default function AdminScreen() {
               Importar
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'people' && styles.tabActive]}
+            onPress={() => setTab('people')}
+          >
+            <Text style={[styles.tabText, tab === 'people' && styles.tabTextActive]}>
+              Personas
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
@@ -381,6 +390,8 @@ export default function AdminScreen() {
         {tab === 'report' && <AdminReportTab />}
 
         {tab === 'import' && <AdminImportTab />}
+
+        {tab === 'people' && <AdminPeopleTab />}
       </View>
 
       <TouchableOpacity
