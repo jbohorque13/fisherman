@@ -17,7 +17,6 @@ import { useAppNotifications } from './src/hooks/useAppNotifications';
 import { registerPushToken } from './src/lib/notifications';
 
 import LoginScreen from './src/screens/LoginScreen';
-import EmailLoginScreen from './src/screens/EmailLoginScreen';
 import PendingScreen from './src/screens/PendingScreen';
 import AdminScreen from './src/screens/AdminScreen';
 import GuiaTabNavigator from './src/navigation/GuiaTabNavigator';
@@ -139,7 +138,6 @@ export default function App() {
               {!session ? (
                 <>
                   <Stack.Screen name="Login" component={LoginScreen} />
-                  <Stack.Screen name="EmailLogin" component={EmailLoginScreen} />
                 </>
               ) : (
                 <Stack.Screen name="Main" component={AppScreens} />
